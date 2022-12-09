@@ -60,7 +60,7 @@ I launch this platform to make sure the customer and the retailer gets what they
 ## Safety Measures
 Sopercase is trying everything possible to make sure you are end-to-end-ecrypted, which means whatever you do is secured.
 
-Shopercase is taking the approcach to encrypt all data been sent to the server. passwords, email addresses are encrypted and stored in a separate **file**, which means it's a **file** accessed by the owner of the **file**. we can't totally gurantee that the **file** won't be breached, but we are trying everything possible to make sure that the **file** will be secure and encrypted.
+Shopercase is taking the approcach to encrypt all data been sent to the server. passwords, email addresses are encrypted and stored in a separate **file**, which means it's a **file** accessed by the owner of the **file**. we can't totally gurantee that the **file** won't be breached, but we are trying everything possible to make sure that the **file** will be secured & encrypted to prevent any hack attempt
 
 ## Features
 
