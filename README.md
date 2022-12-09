@@ -5,7 +5,7 @@
 
 <div align="left">
   
-![GitHub Repo stars](https://img.shields.io/github/stars/creative-tutorials/shopercase-backend?color=blue&style=flat-square)
+![GitHub Repo stars](https://img.shields.io/github/stars/creative-tutorials/shopercase-backend?style=flat-square)
 ![GitHub branch checks state](https://img.shields.io/github/checks-status/creative-tutorials/shopercase-backend/master?color=blue&style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/creative-tutorials/shopercase-backend?color=blue&style=flat-square)
 </div>
