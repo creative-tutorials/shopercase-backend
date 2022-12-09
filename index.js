@@ -50,7 +50,7 @@ app.route("/signup").post((req, res) => {
     if (fullname === "" || email === "" || password === "" || age === "") {
       res.status(401).send({
         code: "Unauthenticated",
-        message: "Please enter a fullname, email, password",
+        message: "Please enter a fullname, email, password and age",
       });
     } else {
       CheckIfEmailFieldIsValid();
@@ -78,9 +78,19 @@ app.route("/signup").post((req, res) => {
   function CheckIfUserIsEligibleToSignup() {
     const eligible_age = 18;
     if (age >= eligible_age) {
+      const options = {
+        min: 10,
+        max: 20,
+        capsWithNumbers: true,
+      };
+      const product_id = generate.random(options);
       res
         .status(200)
-        .send({ code: "success", message: "Account creation successful" });
+        .send({
+          code: "success",
+          message: "Account creation successful",
+          key: product_id,
+        });
       req.body.body = [];
       userdb.push(req.body);
     } else {
@@ -217,7 +227,7 @@ app.route("/products/edit/:productID").put(function (req, res) {
       res
         .status(200)
         .send({ code: "success", message: "Product edited successfully" });
-    function UpdateProductItems(result, result2) {
+      function UpdateProductItems(result, result2) {
         result.productName = product_name;
         result.productPrice = product_price;
         result.productImage = product_image;
