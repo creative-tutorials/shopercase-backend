@@ -2,18 +2,19 @@ import express, { json, urlencoded } from "express";
 import * as dotenv from "dotenv";
 import cors from "cors";
 import generate from "meaningful-string";
+import bodyparser from "body-parser";
 const app = express();
 dotenv.config();
 const PORT = process.env.PORT || 5000;
 const server_apikey = process.env.SERVER_API_KEY;
 app.use(json({ limit: "1000mb" }));
 app.use(urlencoded({ limit: "1000mb", extended: true }));
+app.use(bodyparser.urlencoded({ limit: "1000mb", extended: false }));
 app.use(
   cors({
     origin: ["http://localhost:4000", "http://localhost:5000"],
   })
 );
-
 app.route("/").get(function (req, res) {
   const req_apikey = req.headers.apikey;
   if (req_apikey !== server_apikey)
@@ -83,14 +84,14 @@ app.route("/signup").post((req, res) => {
         max: 20,
         capsWithNumbers: true,
       };
-      const product_id = generate.random(options);
-      res
-        .status(200)
-        .send({
-          code: "success",
-          message: "Account creation successful",
-          key: product_id,
-        });
+      const session_key = generate.random(options);
+      const account = {
+        email: email,
+        password: password,
+        session_key: session_key,
+      };
+      req.body.session_key = session_key;
+      res.status(200).send(account);
       req.body.body = [];
       userdb.push(req.body);
     } else {
@@ -127,12 +128,17 @@ app.route("/login").post(function (req, res) {
     } else {
       res
         .status(403)
-        .send({ code: "error", message: "Email field is not a valid email" });
+        .send({ code: "error", message: "Value is not valid email" });
     }
   }
   function CheckIfUserAccountExist() {
     if (identifyIfUserAlreadyExists) {
-      res.status(200).send({ code: "success", message: "Login successfully!" });
+      const account = {
+        email: identifyIfUserAlreadyExists.email,
+        password: identifyIfUserAlreadyExists.password,
+        session_key: identifyIfUserAlreadyExists.session_key,
+      };
+      res.status(200).send(account);
     } else {
       res
         .status(404)
