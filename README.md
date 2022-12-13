@@ -1,88 +1,73 @@
-<div align="center">
-  
-# Shopercase
-</div>
+# Shopercase Node.js API
 
-<div align="left">
-  
 ![GitHub Repo stars](https://img.shields.io/github/stars/creative-tutorials/shopercase-backend?style=flat-square)
 ![GitHub branch checks state](https://img.shields.io/github/checks-status/creative-tutorials/shopercase-backend/master?color=blue&style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/creative-tutorials/shopercase-backend?color=blue&style=flat-square)
+
 </div>
 
-<div align="center">
-  
-Shop with confidence
-</div>
+The Shopercase Node.js API that handles all of the functionality of the Shopercase application.
 
-Shopercase App is a simple and secure platform for online shopping. With our app, you can easily browse and purchase products from your favorite stores, track your orders, and manage your payment and shipping information. We use the latest technologies to ensure the safety and privacy of your personal and financial data, so you can shop with confidence.
+## Documentation.
 
+For more information about our app see the [`Shopercase Documentation`](https://github.com/creative-tutorials/shopercase)
 
-<!-- details -->
+## Requirements
 
-<details>
-<summary><b>FAQ</b></summary>
+Node.js 14 or higher
 
-<ol>
+## Installation
 
-<li>
+Install all dependencies:
 
-[Why choose shopercase](#why-choose-us)
-</li>
+```bash
+yarn add
+```
 
-<li>
+## Run the application
 
-[Safety Measures](#safety-measures)
-</li>
+Now run the application
 
-<li>
+```bash
+yarn serve
+# This will run the server on port 5000
+```
 
-[Features](#features)
-</li>
+## Usage
 
-<li>
+The following command is used to test the application to see if it works or not
 
-[Technologies](#technologies)
-</li>
-<li>
+```javascript
+import express, { json, urlencoded } from "express";
+const PORT = process.env.PORT || 5000; // if you have an environment variable saved on your local machine then the application would look for the env file and run the first port instead
+const app = express();
+app.use(json());
+app.route("/").get(function (req, res) {
+  res.send("✅Server is running live");
+});
+app.listen(PORT, () => {
+  console.log(`Server started on PORT: ${PORT}`);
+});
+```
 
-[Contributing](#contributing)
-</li>
-</ol>
-</details>
+## Configure the Env file
 
+Here is a simple step to configure the env file to work for the application
 
-## Why Choose Us?
-Shopercase helps connect both the customer and the retailer together, we've a vision of allowing the customer to communicate with the retailer, and vice versa.
+```javascript
+import * as dotenv from "dotenv";
+dotenv.config();
+```
+For this to work properly you must first install the dotenv dependency.
 
-I launch this platform to make sure the customer and the retailer gets what they want without any problems like waiting for the product to land, and worrying about spending money on something you didn't get on time.
+## Install the dependency
+Here's a simple guide on how to install the dotenv dependency
 
-## Safety Measures
-Sopercase is trying everything possible to make sure you are end-to-end-ecrypted, which means whatever you do is secured.
+```bash
+yarn add dotenv
+# or
+npm install dotenv
+```
+## Support
+We will release new bug fixes and features to keep the app up-to-date. If you have any issues with the app please kindly [see the issue tracker](https://github.com/creative-tutorials/shopercase/issues)
 
-Shopercase is taking the approcach to encrypt all data been sent to the server. passwords, email addresses are encrypted and stored in a separate **file**, which means it's a **file** accessed by the owner of the **file**. we can't totally gurantee that the **file** won't be breached, but we are trying everything possible to make sure that the **file** will be secured & encrypted to prevent any hack attempt
-
-## Features
-
-* Browse and search for products from multiple stores
-* Add items to your shopping cart and checkout securely
-* View and track your orders
-* Manage your payment and shipping information
-* Receive notifications about new products and sales
-
-## Technologies
-
-* React for the frontend user interface
-* Node.js and Express for the backend API
-* MongoDB for the database
-* Stripe for secure payment processing
-* SendGrid for email notifications
-
-## Contributing
-
-To use Ecommerce App, you will need to have Node.js and MongoDB installed on your machine. Follow these steps to get started:
-
-1. Clone the repository: `git clone https://github.com/username/ecommerce-app.git`
-1. Install the dependencies: `npm install`
-2. Create a `.env` file and set the necessary environment variables.
-3. Start the development server: `npm start`
