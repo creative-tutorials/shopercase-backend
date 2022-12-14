@@ -3,6 +3,8 @@ import * as dotenv from "dotenv";
 import cors from "cors";
 import generate from "meaningful-string";
 import bodyparser from "body-parser";
+import Server from "./server.js";
+import CorsJS from "./cors.js";
 const app = express();
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -10,11 +12,8 @@ const server_apikey = process.env.SERVER_API_KEY;
 app.use(json({ limit: "1000mb" }));
 app.use(urlencoded({ limit: "1000mb", extended: true }));
 app.use(bodyparser.urlencoded({ limit: "1000mb", extended: false }));
-app.use(
-  cors({
-    origin: ["http://localhost:4000", "http://localhost:5000"],
-  })
-);
+CorsJS({ app, cors });
+
 app.route("/").get(function (req, res) {
   const req_apikey = req.headers.apikey;
   if (req_apikey !== server_apikey)
@@ -80,9 +79,8 @@ app.route("/signup").post((req, res) => {
     const eligible_age = 18;
     if (age >= eligible_age) {
       const options = {
-        min: 10,
-        max: 20,
-        capsWithNumbers: true,
+        min: 30,
+        max: 35,
       };
       const session_key = generate.random(options);
       const account = {
@@ -244,6 +242,63 @@ app.route("/products/edit/:productID").put(function (req, res) {
     }
   }
 });
+
+app.route("/products/delete/:productID").delete((req, res) => {
+  const req_apikey = req.headers.apikey;
+  const { email, password } = req.body;
+  if (req_apikey !== server_apikey)
+    return res
+      .status(400)
+      .send({ code: "issue with apikey", message: "API key mismatch" });
+  const { productID } = req.params;
+  const identifyIfUserAlreadyExists = userdb.find(
+    (identifyIfUserAlreadyExists) =>
+      identifyIfUserAlreadyExists.email === email &&
+      identifyIfUserAlreadyExists.password === password
+  );
+  if (!identifyIfUserAlreadyExists)
+    return res.status(401).send({
+      code: "Unauthenticated",
+      message: "You need to login/signup as a user to continue this process",
+    });
+  if (identifyIfUserAlreadyExists) {
+    HandleDeleteProduct();
+  }
+  function HandleDeleteProduct() {
+    const product_list = identifyIfUserAlreadyExists.body;
+    // product_list
+    // productstore
+    const result = productstore.find(
+      (result) => result.productID === req.params.productID
+    );
+    if (!result)
+      return res.status(404).send({
+        code: "not found",
+        message: `There is no product with ID of ${productID}`,
+      });
+    try {
+      const updateProductStore = productstore.findIndex(
+        (item) => item.productID === productID
+      );
+      const updateProductList = product_list.findIndex(
+        (item) => item.productID === productID
+      );
+      productstore.splice(updateProductStore, 1);
+      product_list.splice(updateProductList, 1);
+      console.log(productstore, product_list);
+      res
+        .status(200)
+        .send({ code: "successfull", message: "Product successfully deleted" });
+    } catch (error) {
+      console.log(error);
+      res.status(406).send({
+        code: "error",
+        message: "There was an error deleting the product",
+      });
+    }
+  }
+});
+
 app.route("/admin/users").get((req, res) => {
   const req_apikey = req.headers.apikey;
   if (req_apikey !== server_apikey)
@@ -260,6 +315,53 @@ app.route("/admin/products").get((req, res) => {
       .send({ code: "issue with apikey", message: "API key mismatch" });
   res.send(productstore);
 });
-app.listen(PORT, () => {
-  console.log(`Server started on PORT: ${PORT}`);
+
+app.route("/user/:session_key").post(function (req, res) {
+  const req_apikey = req.headers.apikey;
+  const { session_key } = req.params;
+  const { email, password } = req.body;
+  if (req_apikey !== server_apikey)
+    return res
+      .status(400)
+      .send({ code: "issue with apikey", message: "API key mismatch" });
+  const identifyIfUserAlreadyExists = userdb.find(
+    (identifyIfUserAlreadyExists) =>
+      identifyIfUserAlreadyExists.email === email &&
+      identifyIfUserAlreadyExists.password === password
+  );
+  if (identifyIfUserAlreadyExists) {
+    AuthorizePermission();
+  }
+  function AuthorizePermission() {
+    try {
+      const user_sessionToken = userdb.find(
+        (item) => item.session_key === session_key
+      );
+      if (user_sessionToken) {
+        const user_product = identifyIfUserAlreadyExists.body;
+        res.status(200).send(user_product);
+      }
+      if (!user_sessionToken) {
+        res.status(401).send({
+          code: "Unauthenticated",
+          message: "Session expired or user not authenticated",
+        });
+      }
+    } catch (error) {
+      res
+        .status(400)
+        .send({
+          code: "Invalid syntax",
+          message:
+            "The server could not respond to your request, check your input and try again.",
+        });
+    }
+  }
+  if (!identifyIfUserAlreadyExists) {
+    res.status(401).send({
+      code: "Unauthenticated",
+      message: "It looks like your account is not authenticated",
+    });
+  }
 });
+Server({ app, PORT });
