@@ -243,8 +243,9 @@ app.route("/products/edit/:productID").put(function (req, res) {
   }
 });
 
-app.route("/products/delete/:productID").delete((req, res) => {
+app.route("/products/delete/:productID/:session_key").delete((req, res) => {
   const req_apikey = req.headers.apikey;
+  const { session_key } = req.params;
   const { email, password } = req.body;
   if (req_apikey !== server_apikey)
     return res
@@ -262,7 +263,19 @@ app.route("/products/delete/:productID").delete((req, res) => {
       message: "You need to login/signup as a user to continue this process",
     });
   if (identifyIfUserAlreadyExists) {
-    HandleDeleteProduct();
+    CheckIfTheUserSessionIsValid();
+  }
+  function CheckIfTheUserSessionIsValid() {
+    const user_sessionToken = userdb.find(
+      (item) => item.session_key === session_key
+    );
+    if (!user_sessionToken) {
+      res.status(401).send({
+        code: "Token invalid",
+        message: "Session expired or user not authenticated",
+      });
+    }
+    if (user_sessionToken) return HandleDeleteProduct();
   }
   function HandleDeleteProduct() {
     const product_list = identifyIfUserAlreadyExists.body;
@@ -343,18 +356,16 @@ app.route("/user/:session_key").post(function (req, res) {
       }
       if (!user_sessionToken) {
         res.status(401).send({
-          code: "Unauthenticated",
+          code: "Token invalid",
           message: "Session expired or user not authenticated",
         });
       }
     } catch (error) {
-      res
-        .status(400)
-        .send({
-          code: "Invalid syntax",
-          message:
-            "The server could not respond to your request, check your input and try again.",
-        });
+      res.status(400).send({
+        code: "Invalid syntax",
+        message:
+          "The server could not respond to your request, check your input and try again.",
+      });
     }
   }
   if (!identifyIfUserAlreadyExists) {
