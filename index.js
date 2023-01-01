@@ -27,6 +27,8 @@ const productstore = [];
 const regex = new RegExp(
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 );
+const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{8,})/;
 app.route("/signup").post((req, res) => {
   const req_apikey = req.headers.apikey;
   if (req_apikey !== server_apikey)
@@ -66,12 +68,13 @@ app.route("/signup").post((req, res) => {
     }
   }
   function CheckIfPasswordFieldIsValid() {
-    if (password.length > 8) {
+    if (passwordRegex.test(password)) {
       CheckIfUserIsEligibleToSignup();
     } else {
       res.status(403).send({
         code: "error",
-        message: "Password must have at least 8 characters",
+        message:
+          "Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character.",
       });
     }
   }
@@ -84,8 +87,6 @@ app.route("/signup").post((req, res) => {
       };
       const session_key = generate.random(options);
       const account = {
-        email: email,
-        password: password,
         session_key: session_key,
       };
       req.body.session_key = session_key;
@@ -132,8 +133,6 @@ app.route("/login").post(function (req, res) {
   function CheckIfUserAccountExist() {
     if (identifyIfUserAlreadyExists) {
       const account = {
-        email: identifyIfUserAlreadyExists.email,
-        password: identifyIfUserAlreadyExists.password,
         session_key: identifyIfUserAlreadyExists.session_key,
       };
       res.status(200).send(account);
@@ -150,12 +149,11 @@ app.route("/products/create").post((req, res) => {
     return res
       .status(400)
       .send({ code: "issue with apikey", message: "API key mismatch" });
-  const { email, password } = req.body;
+  const { session_key } = req.body;
   const { product_name, product_price, product_image } = req.body.body;
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      identifyIfUserAlreadyExists.email === email &&
-      identifyIfUserAlreadyExists.password === password
+      identifyIfUserAlreadyExists.session_key === session_key
   );
   if (identifyIfUserAlreadyExists) {
     UploadProducts();
@@ -190,63 +188,35 @@ app.route("/products/create").post((req, res) => {
       .send({ code: "success", message: "Product was successfully created" });
   }
 });
-app.route("/products/edit/:productID").put(function (req, res) {
+
+app.route("/products/request/:productID/:session_key").post((req, res) => {
   const req_apikey = req.headers.apikey;
+  const { session_key } = req.params;
   if (req_apikey !== server_apikey)
     return res
       .status(400)
       .send({ code: "issue with apikey", message: "API key mismatch" });
-  const { email, password } = req.body;
-  const { product_name, product_price, product_image } = req.body.body;
+
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      identifyIfUserAlreadyExists.email === email &&
-      identifyIfUserAlreadyExists.password === password
+      (identifyIfUserAlreadyExists.session_key === session_key)
   );
-  if (identifyIfUserAlreadyExists) {
-    CheckIfProductExist();
-  } else {
-    res.status(401).send({
-      code: "Unauthenticated",
-      message:
-        "You are not allowed to edit this product without authenticating your account.",
+  if (identifyIfUserAlreadyExists) return RequestProductAccess();
+
+  function RequestProductAccess() {
+    console.log(identifyIfUserAlreadyExists.body);
+    res.status(200).send({code: 'success', message: "Connected successfully"})
+  }
+  if (!identifyIfUserAlreadyExists)
+    return res.status(401).send({
+      error: "Unauthenticated",
+      message: "You need to login/signup as a user to purchase this product",
     });
-  }
-  function CheckIfProductExist() {
-    const id = identifyIfUserAlreadyExists.body;
-    const result = id.find(
-      (result) => result.productID === req.params.productID
-    );
-    const result2 = productstore.find(
-      (result) => result.productID === req.params.productID
-    );
-    if (!result) {
-      res.status(404).send({
-        code: "Not Found",
-        message: "Product not found in the database",
-      });
-    }
-    if (result) {
-      UpdateProductItems(result, result2);
-      res
-        .status(200)
-        .send({ code: "success", message: "Product edited successfully" });
-      function UpdateProductItems(result, result2) {
-        result.productName = product_name;
-        result.productPrice = product_price;
-        result.productImage = product_image;
-        result2.productName = product_name;
-        result2.productPrice = product_price;
-        result2.productImage = product_image;
-      }
-    }
-  }
 });
 
 app.route("/products/delete/:productID/:session_key").delete((req, res) => {
   const req_apikey = req.headers.apikey;
   const { session_key } = req.params;
-  const { email, password } = req.body;
   if (req_apikey !== server_apikey)
     return res
       .status(400)
@@ -254,33 +224,19 @@ app.route("/products/delete/:productID/:session_key").delete((req, res) => {
   const { productID } = req.params;
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      identifyIfUserAlreadyExists.email === email &&
-      identifyIfUserAlreadyExists.password === password
+      (identifyIfUserAlreadyExists.session_key === session_key)
   );
   if (!identifyIfUserAlreadyExists)
     return res.status(401).send({
       code: "Unauthenticated",
       message: "You need to login/signup as a user to continue this process",
     });
-  if (identifyIfUserAlreadyExists) {
-    CheckIfTheUserSessionIsValid();
-  }
-  function CheckIfTheUserSessionIsValid() {
-    const user_sessionToken = userdb.find(
-      (item) => item.session_key === session_key
-    );
-    if (!user_sessionToken) {
-      res.status(401).send({
-        code: "Token invalid",
-        message: "Session expired or user not authenticated",
-      });
-    }
-    if (user_sessionToken) return HandleDeleteProduct();
-  }
+  /* Checking if the user exists in the database and if it does, it will call the function
+  `HandleDeleteProduct()` */
+  if (identifyIfUserAlreadyExists) return HandleDeleteProduct();
+
   function HandleDeleteProduct() {
     const product_list = identifyIfUserAlreadyExists.body;
-    // product_list
-    // productstore
     const result = productstore.find(
       (result) => result.productID === req.params.productID
     );
@@ -332,34 +288,18 @@ app.route("/admin/products").get((req, res) => {
 app.route("/user/:session_key").post(function (req, res) {
   const req_apikey = req.headers.apikey;
   const { session_key } = req.params;
-  const { email, password } = req.body;
   if (req_apikey !== server_apikey)
     return res
       .status(400)
       .send({ code: "issue with apikey", message: "API key mismatch" });
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      identifyIfUserAlreadyExists.email === email &&
-      identifyIfUserAlreadyExists.password === password
+      identifyIfUserAlreadyExists.session_key === session_key
   );
   if (identifyIfUserAlreadyExists) {
-    AuthorizePermission();
-  }
-  function AuthorizePermission() {
     try {
-      const user_sessionToken = userdb.find(
-        (item) => item.session_key === session_key
-      );
-      if (user_sessionToken) {
-        const user_product = identifyIfUserAlreadyExists.body;
-        res.status(200).send(user_product);
-      }
-      if (!user_sessionToken) {
-        res.status(401).send({
-          code: "Token invalid",
-          message: "Session expired or user not authenticated",
-        });
-      }
+      const user_product = identifyIfUserAlreadyExists.body;
+      res.status(200).send(user_product);
     } catch (error) {
       res.status(400).send({
         code: "Invalid syntax",
