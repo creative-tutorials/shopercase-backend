@@ -5,6 +5,9 @@ import generate from "meaningful-string";
 import bodyparser from "body-parser";
 import Server from "./server.js";
 import CorsJS from "./cors.js";
+import ConnectToMongoDB from "./mongodb/connect.js";
+import WriteToDatabase from "./mongodb/write.js";
+
 const app = express();
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -13,6 +16,8 @@ app.use(json({ limit: "1000mb" }));
 app.use(urlencoded({ limit: "1000mb", extended: true }));
 app.use(bodyparser.urlencoded({ limit: "1000mb", extended: false }));
 CorsJS({ app, cors });
+
+ConnectToMongoDB();
 
 app.route("/").get(function (req, res) {
   const req_apikey = req.headers.apikey;
@@ -89,10 +94,12 @@ app.route("/signup").post((req, res) => {
       const account = {
         session_key: session_key,
       };
+      const reqbody = req.body;
       req.body.session_key = session_key;
       res.status(200).send(account);
       req.body.body = [];
-      userdb.push(req.body);
+      userdb.push(reqbody);
+      WriteToDatabase(reqbody);
     } else {
       res.status(403).send({
         code: "error",
@@ -191,7 +198,7 @@ app.route("/products/create").post((req, res) => {
 
 app.route("/products/request/:productID/:session_key").post((req, res) => {
   const req_apikey = req.headers.apikey;
-  const { session_key } = req.params;
+  const { session_key, productID } = req.params;
   if (req_apikey !== server_apikey)
     return res
       .status(400)
@@ -199,13 +206,29 @@ app.route("/products/request/:productID/:session_key").post((req, res) => {
 
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      (identifyIfUserAlreadyExists.session_key === session_key)
+      identifyIfUserAlreadyExists.session_key === session_key
   );
+  const fetchProductFromParamsValue = productstore.find(
+    (fetchProductFromParamsValue) =>
+      fetchProductFromParamsValue.productID === productID
+  );
+  /* Checking if the user exists in the database and if it does, it will call the function
+  `RequestProductAccess()` */
   if (identifyIfUserAlreadyExists) return RequestProductAccess();
 
   function RequestProductAccess() {
-    console.log(identifyIfUserAlreadyExists.body);
-    res.status(200).send({code: 'success', message: "Connected successfully"})
+    CheckIfProductIDisValid();
+  }
+  function CheckIfProductIDisValid() {
+    if (fetchProductFromParamsValue) {
+      console.log(fetchProductFromParamsValue);
+      res
+        .status(200)
+        .send({ code: "success", message: "Connected successfully" });
+    }
+    if (!fetchProductFromParamsValue) {
+      res.status(404).send({ code: "error", message: "Invalid Product ID" });
+    }
   }
   if (!identifyIfUserAlreadyExists)
     return res.status(401).send({
@@ -224,7 +247,7 @@ app.route("/products/delete/:productID/:session_key").delete((req, res) => {
   const { productID } = req.params;
   const identifyIfUserAlreadyExists = userdb.find(
     (identifyIfUserAlreadyExists) =>
-      (identifyIfUserAlreadyExists.session_key === session_key)
+      identifyIfUserAlreadyExists.session_key === session_key
   );
   if (!identifyIfUserAlreadyExists)
     return res.status(401).send({
