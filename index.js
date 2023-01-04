@@ -1,3 +1,4 @@
+"use strict";
 import express, { json, urlencoded } from "express";
 import * as dotenv from "dotenv";
 import cors from "cors";
@@ -7,6 +8,8 @@ import Server from "./server.js";
 import CorsJS from "./cors.js";
 import ConnectToMongoDB from "./mongodb/connect.js";
 import WriteToDatabase from "./mongodb/write.js";
+import mailgun from "mailgun-js";
+import cryptoRandomString from "crypto-random-string";
 
 const app = express();
 dotenv.config();
@@ -16,8 +19,9 @@ app.use(json({ limit: "1000mb" }));
 app.use(urlencoded({ limit: "1000mb", extended: true }));
 app.use(bodyparser.urlencoded({ limit: "1000mb", extended: false }));
 CorsJS({ app, cors });
-
 ConnectToMongoDB();
+const DOMAIN = process.env.MAILDOMAIN;
+const mg = mailgun({ apiKey: process.env.apikey, domain: DOMAIN });
 
 app.route("/").get(function (req, res) {
   const req_apikey = req.headers.apikey;
@@ -29,6 +33,7 @@ app.route("/").get(function (req, res) {
 });
 const userdb = [];
 const productstore = [];
+const betaAcess = [];
 const regex = new RegExp(
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 );
@@ -69,7 +74,7 @@ app.route("/signup").post((req, res) => {
     } else {
       res
         .status(401)
-        .send({ code: "error", message: "Email field is not a valid email" });
+        .send({ code: "error", message: "email is not a valid email address" });
     }
   }
   function CheckIfPasswordFieldIsValid() {
@@ -134,7 +139,7 @@ app.route("/login").post(function (req, res) {
     } else {
       res
         .status(403)
-        .send({ code: "error", message: "Value is not valid email" });
+        .send({ code: "error", message: "email is not a valid email address" });
     }
   }
   function CheckIfUserAccountExist() {
@@ -148,6 +153,90 @@ app.route("/login").post(function (req, res) {
         .status(404)
         .send({ code: "error", message: "That user account does not exist" });
     }
+  }
+});
+let test = "";
+app.route("/magic_link").post((req, res) => {
+  const req_apikey = req.headers.apikey;
+  const { email } = req.body;
+  if (req_apikey !== server_apikey)
+    return res
+      .status(400)
+      .send({ code: "issue with apikey", message: "API key mismatch" });
+  const safePin = cryptoRandomString({ length: 6, type: "numeric" });
+  test = safePin;
+  if (email === "" || !email) {
+    res.status(400).send({ message: "Please enter an email address" });
+  } else {
+    CheckIfEmailFieldIsValid();
+  }
+  function CheckIfEmailFieldIsValid() {
+    if (regex.test(email) && email.includes(".")) {
+      ValidationProcess();
+    } else {
+      res
+        .status(403)
+        .send({
+          code: "error",
+          message: `'${email}' is not a valid email address`,
+        });
+    }
+  }
+  async function ValidationProcess() {
+    const data = {
+      from: "hashtag.xyz34@gmail.com",
+      to: email,
+      subject: "Your Magic Pin",
+      text: safePin,
+    };
+    mg.messages().send(data, function (error, body) {
+      console.log(body);
+      if (error) {
+        res.status(403).send({
+          code: "error",
+          message: "There was an error sending your magic Pin",
+        });
+      } else {
+        res.status(200).send({
+          code: "OK",
+          message: "Your magic pin has been sent to your email",
+          magicToken: safePin,
+        });
+      }
+    });
+  }
+});
+app.route("/magic_link/validate").post((req, res) => {
+  const req_apikey = req.headers.apikey;
+  const { pin } = req.body;
+  console.log(pin, test)
+  if (req_apikey !== server_apikey)
+    return res
+      .status(400)
+      .send({ code: "issue with apikey", message: "API key mismatch" });
+  if (pin === test) {
+    CreateSessionAuthToken();
+  }
+  if (pin !== test) {
+    res
+      .status(400)
+      .send({ message: "Pin Incorrect. Check the Pin and Try Again" });
+  }
+  function CreateSessionAuthToken() {
+    const SessionAuthToken = cryptoRandomString({ length: 30, type: "alphanumeric" });
+    const options = {
+      numberUpto: 60,
+      joinBy: "-",
+    };
+    const beta = {
+      username: generate.meaningful(options),
+      session_key: SessionAuthToken,
+      status: 'beta',
+      body: []
+    };
+    res.status(200).send({ auth: beta, message: "Welcome you are now a beta tester" });
+    // betaAcess.push(beta);
+    userdb.push(beta);
   }
 });
 app.route("/products/create").post((req, res) => {
