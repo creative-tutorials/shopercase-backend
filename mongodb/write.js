@@ -5,12 +5,12 @@ export default function WriteToDatabase(reqbody) {
   const client = new MongoClient(connectionString, { useNewUrlParser: true });
 
   client.connect((err) => {
-    if (err) {
-      console.log("Error connecting to MongoDB server".underline.red);
-    } else {
-      const collection = client.db('sandbox').collection('users');
+    try {
+      const collection = client.db("sandbox").collection("users");
       collection.insertOne(reqbody);
+      console.log('Data written sucessfully')
+    } catch (error) {
+      console.log("Error writting data to the database".underline.red);
     }
-    // client.close();
   });
 }
